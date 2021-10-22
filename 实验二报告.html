@@ -1,0 +1,294 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>实验二报告</title>
+  <link rel="stylesheet" href="https://stackedit.io/style.css" />
+</head>
+
+<body class="stackedit">
+  <div class="stackedit__html"><h1><a id="_0"></a>实验（二）</h1>
+<h3><a id="_2"></a>代码段：</h3>
+<pre><code class="prism language-python"><span class="token comment"># 实验环境：MindSpore-python3.7-aarch64</span>
+
+<span class="token keyword">import</span> os
+<span class="token comment"># os.environ['DEVICE_ID'] = '0'</span>
+
+<span class="token keyword">import</span> mindspore <span class="token keyword">as</span> ms
+<span class="token keyword">import</span> mindspore<span class="token punctuation">.</span>context <span class="token keyword">as</span> context
+<span class="token keyword">import</span> mindspore<span class="token punctuation">.</span>dataset<span class="token punctuation">.</span>transforms<span class="token punctuation">.</span>c_transforms <span class="token keyword">as</span> C
+<span class="token keyword">import</span> mindspore<span class="token punctuation">.</span>dataset<span class="token punctuation">.</span>vision<span class="token punctuation">.</span>c_transforms <span class="token keyword">as</span> CV
+
+<span class="token keyword">from</span> mindspore <span class="token keyword">import</span> nn
+<span class="token keyword">from</span> mindspore<span class="token punctuation">.</span>train <span class="token keyword">import</span> Model
+<span class="token keyword">from</span> mindspore<span class="token punctuation">.</span>train<span class="token punctuation">.</span>callback <span class="token keyword">import</span> LossMonitor
+
+context<span class="token punctuation">.</span>set_context<span class="token punctuation">(</span>mode<span class="token operator">=</span>context<span class="token punctuation">.</span>GRAPH_MODE<span class="token punctuation">,</span> device_target<span class="token operator">=</span><span class="token string">'Ascend'</span><span class="token punctuation">)</span> <span class="token comment"># Ascend, CPU, GPU</span>
+
+data_train <span class="token operator">=</span> os<span class="token punctuation">.</span>path<span class="token punctuation">.</span>join<span class="token punctuation">(</span><span class="token string">"MNIST"</span><span class="token punctuation">,</span> <span class="token string">'train'</span><span class="token punctuation">)</span> <span class="token comment"># train set</span>
+data_test <span class="token operator">=</span> os<span class="token punctuation">.</span>path<span class="token punctuation">.</span>join<span class="token punctuation">(</span><span class="token string">"MNIST"</span><span class="token punctuation">,</span> <span class="token string">'test'</span><span class="token punctuation">)</span> <span class="token comment"># test set</span>
+ds <span class="token operator">=</span> ms<span class="token punctuation">.</span>dataset<span class="token punctuation">.</span>MnistDataset<span class="token punctuation">(</span>data_train<span class="token punctuation">)</span>
+<span class="token keyword">print</span><span class="token punctuation">(</span>data_train<span class="token punctuation">)</span>
+</code></pre>
+<p><img src="https://img-blog.csdnimg.cn/29523d66ffde45198c89bc75ebc7278a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"><br>
+以上在华为云上不断报错，而且无法排除错误，于是我参考了网上视频教程，使用keras（基于tensorflow框架）第三方库在本地电脑上运行：</p>
+<pre><code class="prism language-python"><span class="token comment"># 准备工作：</span>
+
+pip install keras
+pip install tensorflow
+</code></pre>
+<h3><a id="_36"></a>第一次代码：</h3>
+<pre><code class="prism language-python"><span class="token comment"># 实验环境：pycharm, python 3.8</span>
+<span class="token comment"># 框架：tensorflow</span>
+
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>utils <span class="token keyword">import</span> to_categorical
+<span class="token keyword">from</span> keras <span class="token keyword">import</span> models<span class="token punctuation">,</span> layers<span class="token punctuation">,</span> regularizers
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>optimizers <span class="token keyword">import</span> RMSprop
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>datasets <span class="token keyword">import</span> mnist <span class="token comment"># 导入数据集</span>
+<span class="token keyword">import</span> matplotlib<span class="token punctuation">.</span>pyplot <span class="token keyword">as</span> plt
+
+<span class="token comment"># 加载数据集</span>
+<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span> <span class="token operator">=</span> mnist<span class="token punctuation">.</span>load_data<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 下载数据集</span>
+<span class="token comment"># print(train_images.shape, test_images.shape) # 打印输出形状</span>
+<span class="token comment"># print(train_images[0])</span>
+<span class="token comment"># print(train_labels[0])</span>
+<span class="token comment"># plt.imshow(train_images[0])</span>
+<span class="token comment"># plt.show()</span>
+
+<span class="token comment"># 将二维数据铺开成一维</span>
+train_images <span class="token operator">=</span> train_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">60000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span> <span class="token comment"># 784，输入层有784个神经元</span>
+test_images <span class="token operator">=</span> test_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">10000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span>
+<span class="token comment"># 标签值编码</span>
+train_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>train_labels<span class="token punctuation">)</span>
+test_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>test_labels<span class="token punctuation">)</span>
+<span class="token comment"># print(train_labels[0])</span>
+
+<span class="token comment"># 搭建神经网络</span>
+<span class="token comment"># 输入层28*28个神经元，隐藏层15个神经元，输出层10个神经元（0~9）</span>
+network <span class="token operator">=</span> models<span class="token punctuation">.</span>Sequential<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 序列式模型</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">15</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">,</span> input_shape<span class="token operator">=</span><span class="token punctuation">(</span><span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">,</span> <span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 隐藏层</span>
+<span class="token comment"># Dense：全连接层</span>
+<span class="token comment"># units：15个神经元</span>
+<span class="token comment"># 激活函数：ReLu（sigmoid和tanh会产生梯度弥散现象，自变量很大时，图像很平缓，梯度下降十分缓慢）</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">10</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'softmax'</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 输出层</span>
+<span class="token comment"># 激活函数选择softmax，输出为概率值</span>
+
+<span class="token comment"># 训练神经网络</span>
+<span class="token comment"># 编译：确定优化器（学习率/梯度下降步长）和损失函数等</span>
+network<span class="token punctuation">.</span><span class="token builtin">compile</span><span class="token punctuation">(</span>optimizer<span class="token operator">=</span>RMSprop<span class="token punctuation">(</span>lr<span class="token operator">=</span><span class="token number">0.001</span><span class="token punctuation">)</span><span class="token punctuation">,</span> loss<span class="token operator">=</span><span class="token string">'categorical_crossentropy'</span><span class="token punctuation">,</span> metrics<span class="token operator">=</span><span class="token punctuation">[</span><span class="token string">'accuracy'</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+<span class="token comment"># epochs表示训练多少个回合，batch_size表示每次训练给多大的数据</span>
+network<span class="token punctuation">.</span>fit<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">,</span> epochs<span class="token operator">=</span><span class="token number">20</span><span class="token punctuation">,</span> batch_size<span class="token operator">=</span><span class="token number">128</span><span class="token punctuation">,</span> verbose<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">)</span>
+<span class="token comment"># 经过20轮训练，训练集准确率达到80%</span>
+<span class="token comment"># print(network.summary())</span>
+
+<span class="token comment"># 用模型进行预测</span>
+<span class="token comment"># y_pre = network.predict(test_images[:5])</span>
+<span class="token comment"># print(y_pre, test_labels[:5])</span>
+test_loss<span class="token punctuation">,</span> test_accuracy <span class="token operator">=</span> network<span class="token punctuation">.</span>evaluate<span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span>
+<span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string">"test_loss: "</span><span class="token punctuation">,</span> test_loss<span class="token punctuation">,</span> <span class="token string">"          test_accuracy: "</span><span class="token punctuation">,</span> test_accuracy<span class="token punctuation">)</span>
+
+</code></pre>
+<p>加载完数据输出第一张图片预览：<br>
+<img src="https://img-blog.csdnimg.cn/fca1e18f7190496f8d85c1308371038a.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="加载数据"></p>
+<p>对标签值进行编码：<br>
+<img src="https://img-blog.csdnimg.cn/d70f460eec13477295afea78558f967b.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"></p>
+<p>神经网络的训练结构：<br>
+<img src="https://img-blog.csdnimg.cn/066350d07db341eaaaecd04f2c1f02d2.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"></p>
+<p>第一次训练集结果：<br>
+<img src="https://img-blog.csdnimg.cn/264a4cf0c54c4cd18ab195e5c1445382.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"></p>
+<p>第一次测试集结果：<br>
+<img src="https://img-blog.csdnimg.cn/ab67cf5ea959426c810df0b571b732ff.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"></p>
+<p>第一次测试输出的结果准确率为89.85%，不过为什么只有313张测试图片？<br>
+<br></p>
+<h2><a id="_107"></a>然后按照教程对模型进行改进：</h2>
+<p>首先将原来隐藏层的神经元数量增加至128，同时再增加一层神经元数量为32的隐藏层。</p>
+<h3><a id="_110"></a>第二次代码：</h3>
+<pre><code class="prism language-python"><span class="token keyword">from</span> keras<span class="token punctuation">.</span>utils <span class="token keyword">import</span> to_categorical
+<span class="token keyword">from</span> keras <span class="token keyword">import</span> models<span class="token punctuation">,</span> layers<span class="token punctuation">,</span> regularizers
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>optimizers <span class="token keyword">import</span> RMSprop
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>datasets <span class="token keyword">import</span> mnist <span class="token comment"># 导入数据集</span>
+<span class="token keyword">import</span> matplotlib<span class="token punctuation">.</span>pyplot <span class="token keyword">as</span> plt
+
+<span class="token comment"># 加载数据集</span>
+<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span> <span class="token operator">=</span> mnist<span class="token punctuation">.</span>load_data<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 下载数据集</span>
+<span class="token comment"># print(train_images.shape, test_images.shape) # 打印输出形状</span>
+<span class="token comment"># print(train_images[0])</span>
+<span class="token comment"># print(train_labels[0])</span>
+<span class="token comment"># plt.imshow(train_images[0])</span>
+<span class="token comment"># plt.show()</span>
+
+<span class="token comment"># 将二维数据铺开成一维</span>
+train_images <span class="token operator">=</span> train_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">60000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span> <span class="token comment"># 784，输入层有784个神经元</span>
+test_images <span class="token operator">=</span> test_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">10000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span>
+<span class="token comment"># 标签值编码</span>
+train_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>train_labels<span class="token punctuation">)</span>
+test_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>test_labels<span class="token punctuation">)</span>
+<span class="token comment"># print(train_labels[0])</span>
+
+<span class="token comment"># 搭建神经网络</span>
+<span class="token comment"># 输入层28*28个神经元，隐藏层15个神经元，输出层10个神经元（0~9）</span>
+network <span class="token operator">=</span> models<span class="token punctuation">.</span>Sequential<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 序列式模型</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">128</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">,</span> input_shape<span class="token operator">=</span><span class="token punctuation">(</span><span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">,</span> <span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 隐藏层</span>
+<span class="token comment"># Dense：全连接层</span>
+<span class="token comment"># units：15个神经元</span>
+<span class="token comment"># 激活函数：ReLu（sigmoid和tanh会产生梯度弥散现象，自变量很大时，图像很平缓，梯度下降十分缓慢）</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">32</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 第二层隐藏层</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">10</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'softmax'</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 输出层</span>
+<span class="token comment"># 激活函数选择softmax，输出为概率值</span>
+
+<span class="token comment"># 训练神经网络</span>
+<span class="token comment"># 编译：确定优化器（学习率/梯度下降步长）和损失函数等</span>
+network<span class="token punctuation">.</span><span class="token builtin">compile</span><span class="token punctuation">(</span>optimizer<span class="token operator">=</span>RMSprop<span class="token punctuation">(</span>lr<span class="token operator">=</span><span class="token number">0.001</span><span class="token punctuation">)</span><span class="token punctuation">,</span> loss<span class="token operator">=</span><span class="token string">'categorical_crossentropy'</span><span class="token punctuation">,</span> metrics<span class="token operator">=</span><span class="token punctuation">[</span><span class="token string">'accuracy'</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+<span class="token comment"># epochs表示训练多少个回合，batch_size表示每次训练给多大的数据</span>
+network<span class="token punctuation">.</span>fit<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">,</span> epochs<span class="token operator">=</span><span class="token number">20</span><span class="token punctuation">,</span> batch_size<span class="token operator">=</span><span class="token number">128</span><span class="token punctuation">,</span> verbose<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">)</span>
+<span class="token comment"># 经过20轮训练，训练集准确率达到80%</span>
+<span class="token comment"># print(network.summary())</span>
+
+<span class="token comment"># 用模型进行预测</span>
+<span class="token comment"># y_pre = network.predict(test_images[:5])</span>
+<span class="token comment"># print(y_pre, test_labels[:5])</span>
+test_loss<span class="token punctuation">,</span> test_accuracy <span class="token operator">=</span> network<span class="token punctuation">.</span>evaluate<span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span>
+<span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string">"test_loss: "</span><span class="token punctuation">,</span> test_loss<span class="token punctuation">,</span> <span class="token string">"          test_accuracy: "</span><span class="token punctuation">,</span> test_accuracy<span class="token punctuation">)</span>
+</code></pre>
+<p>测试结果：<br>
+<img src="https://img-blog.csdnimg.cn/e73fa0d984c041e580e6c175608e2302.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"><br>
+相同情况下，训练集准确率提升至97.23%（过拟合），测试集准确率提升至95.91%，同时运行时长也增加了。<br>
+为了解决过拟合的问题，在每一层隐藏层都加入正则化和Dropout方法。</p>
+<h3><a id="_165"></a>第三次代码：</h3>
+<pre><code class="prism language-python"><span class="token keyword">from</span> keras<span class="token punctuation">.</span>utils <span class="token keyword">import</span> to_categorical
+<span class="token keyword">from</span> keras <span class="token keyword">import</span> models<span class="token punctuation">,</span> layers<span class="token punctuation">,</span> regularizers
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>optimizers <span class="token keyword">import</span> RMSprop
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>datasets <span class="token keyword">import</span> mnist <span class="token comment"># 导入数据集</span>
+<span class="token keyword">import</span> matplotlib<span class="token punctuation">.</span>pyplot <span class="token keyword">as</span> plt
+
+<span class="token comment"># 加载数据集</span>
+<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span> <span class="token operator">=</span> mnist<span class="token punctuation">.</span>load_data<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 下载数据集</span>
+<span class="token comment"># print(train_images.shape, test_images.shape) # 打印输出形状</span>
+<span class="token comment"># print(train_images[0])</span>
+<span class="token comment"># print(train_labels[0])</span>
+<span class="token comment"># plt.imshow(train_images[0])</span>
+<span class="token comment"># plt.show()</span>
+
+<span class="token comment"># 将二维数据铺开成一维</span>
+train_images <span class="token operator">=</span> train_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">60000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span> <span class="token comment"># 784，输入层有784个神经元</span>
+test_images <span class="token operator">=</span> test_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">10000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span>
+<span class="token comment"># 标签值编码</span>
+train_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>train_labels<span class="token punctuation">)</span>
+test_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>test_labels<span class="token punctuation">)</span>
+<span class="token comment"># print(train_labels[0])</span>
+
+<span class="token comment"># 搭建神经网络</span>
+<span class="token comment"># 输入层28*28个神经元，隐藏层15个神经元，输出层10个神经元（0~9）</span>
+network <span class="token operator">=</span> models<span class="token punctuation">.</span>Sequential<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 序列式模型</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">128</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">,</span> input_shape<span class="token operator">=</span><span class="token punctuation">(</span><span class="token number">28</span><span class="token operator">*</span><span class="token number">28</span><span class="token punctuation">,</span> <span class="token punctuation">)</span><span class="token punctuation">,</span>
+                         kernel_regularizer<span class="token operator">=</span>regularizers<span class="token punctuation">.</span>l1<span class="token punctuation">(</span><span class="token number">0.0001</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 隐藏层</span>
+<span class="token comment"># 正则化消除过拟合问题</span>
+<span class="token comment"># Dense：全连接层</span>
+<span class="token comment"># units：15个神经元</span>
+<span class="token comment"># 激活函数：ReLu（sigmoid和tanh会产生梯度弥散现象，自变量很大时，图像很平缓，梯度下降十分缓慢）</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dropout<span class="token punctuation">(</span><span class="token number">0.01</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 0.01的概率使神经元丧失功能</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">32</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">,</span> 
+                         kernel_regularizer<span class="token operator">=</span>regularizers<span class="token punctuation">.</span>l1<span class="token punctuation">(</span><span class="token number">0.0001</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 第二层隐藏层</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dropout<span class="token punctuation">(</span><span class="token number">0.01</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 0.01的概率使神经元丧失功能</span>
+network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span>units<span class="token operator">=</span><span class="token number">10</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'softmax'</span><span class="token punctuation">)</span><span class="token punctuation">)</span> <span class="token comment"># 输出层</span>
+<span class="token comment"># 激活函数选择softmax，输出为概率值</span>
+
+<span class="token comment"># 训练神经网络</span>
+<span class="token comment"># 编译：确定优化器（学习率/梯度下降步长）和损失函数等</span>
+network<span class="token punctuation">.</span><span class="token builtin">compile</span><span class="token punctuation">(</span>optimizer<span class="token operator">=</span>RMSprop<span class="token punctuation">(</span>lr<span class="token operator">=</span><span class="token number">0.001</span><span class="token punctuation">)</span><span class="token punctuation">,</span> loss<span class="token operator">=</span><span class="token string">'categorical_crossentropy'</span><span class="token punctuation">,</span> metrics<span class="token operator">=</span><span class="token punctuation">[</span><span class="token string">'accuracy'</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+<span class="token comment"># epochs表示训练多少个回合，batch_size表示每次训练给多大的数据</span>
+network<span class="token punctuation">.</span>fit<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">,</span> epochs<span class="token operator">=</span><span class="token number">20</span><span class="token punctuation">,</span> batch_size<span class="token operator">=</span><span class="token number">128</span><span class="token punctuation">,</span> verbose<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">)</span>
+<span class="token comment"># 经过20轮训练，训练集准确率达到80%</span>
+<span class="token comment"># print(network.summary())</span>
+
+<span class="token comment"># 用模型进行预测</span>
+<span class="token comment"># y_pre = network.predict(test_images[:5])</span>
+<span class="token comment"># print(y_pre, test_labels[:5])</span>
+test_loss<span class="token punctuation">,</span> test_accuracy <span class="token operator">=</span> network<span class="token punctuation">.</span>evaluate<span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span>
+<span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string">"test_loss: "</span><span class="token punctuation">,</span> test_loss<span class="token punctuation">,</span> <span class="token string">"          test_accuracy: "</span><span class="token punctuation">,</span> test_accuracy<span class="token punctuation">)</span>
+</code></pre>
+<p>现在过拟合现象在大多数情况下消失了：<br>
+<img src="https://img-blog.csdnimg.cn/d361cfe9dec8430b882af66685541447.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"><br>
+最后再尝试使用简单的卷积神经网络模型：</p>
+<h3><a id="_224"></a>第四次代码：</h3>
+<pre><code class="prism language-python"><span class="token keyword">from</span> keras<span class="token punctuation">.</span>utils <span class="token keyword">import</span> to_categorical
+<span class="token keyword">from</span> keras <span class="token keyword">import</span> models<span class="token punctuation">,</span> layers<span class="token punctuation">,</span> regularizers
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>optimizers <span class="token keyword">import</span> RMSprop
+<span class="token keyword">from</span> keras<span class="token punctuation">.</span>datasets <span class="token keyword">import</span> mnist <span class="token comment"># 导入数据集</span>
+<span class="token keyword">import</span> matplotlib<span class="token punctuation">.</span>pyplot <span class="token keyword">as</span> plt
+
+<span class="token comment"># 加载数据集</span>
+<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">)</span><span class="token punctuation">,</span> <span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span> <span class="token operator">=</span> mnist<span class="token punctuation">.</span>load_data<span class="token punctuation">(</span><span class="token punctuation">)</span> <span class="token comment"># 下载数据集</span>
+<span class="token comment"># print(train_images.shape, test_images.shape) # 打印输出形状</span>
+<span class="token comment"># print(train_images[0])</span>
+<span class="token comment"># print(train_labels[0])</span>
+<span class="token comment"># plt.imshow(train_images[0])</span>
+<span class="token comment"># plt.show()</span>
+
+<span class="token comment"># 将二维数据铺开成一维</span>
+<span class="token comment"># train_images = train_images.reshape((60000, 28*28)).astype('float') # 784，输入层有784个神经元</span>
+<span class="token comment"># test_images = test_images.reshape((10000, 28*28)).astype('float')</span>
+<span class="token comment"># # 标签值编码</span>
+<span class="token comment"># train_labels = to_categorical(train_labels)</span>
+<span class="token comment"># test_labels = to_categorical(test_labels)</span>
+<span class="token comment"># print(train_labels[0])</span>
+
+<span class="token comment"># # 搭建神经网络</span>
+<span class="token comment"># # 输入层28*28个神经元，隐藏层15个神经元，输出层10个神经元（0~9）</span>
+<span class="token comment"># network = models.Sequential() # 序列式模型</span>
+<span class="token comment"># network.add(layers.Dense(units=128, activation='relu', input_shape=(28*28, ),</span>
+<span class="token comment">#                          kernel_regularizer=regularizers.l1(0.0001))) # 隐藏层</span>
+<span class="token comment"># # 正则化消除过拟合问题</span>
+<span class="token comment"># # Dense：全连接层</span>
+<span class="token comment"># # units：15个神经元</span>
+<span class="token comment"># # 激活函数：ReLu（sigmoid和tanh会产生梯度弥散现象，自变量很大时，图像很平缓，梯度下降十分缓慢）</span>
+<span class="token comment"># network.add(layers.Dropout(0.01)) # 0.01的概率使神经元丧失功能</span>
+<span class="token comment"># network.add(layers.Dense(units=32, activation='relu',</span>
+<span class="token comment">#                          kernel_regularizer=regularizers.l1(0.0001))) # 第二层隐藏层</span>
+<span class="token comment"># network.add(layers.Dropout(0.01)) # 0.01的概率使神经元丧失功能</span>
+<span class="token comment"># network.add(layers.Dense(units=10, activation='softmax')) # 输出层</span>
+<span class="token comment"># # 激活函数选择softmax，输出为概率值</span>
+
+<span class="token comment"># 尝试使用卷积神经网络</span>
+<span class="token keyword">def</span> <span class="token function">Lenet</span><span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">:</span>
+    network <span class="token operator">=</span> models<span class="token punctuation">.</span>Sequential<span class="token punctuation">(</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Conv2D<span class="token punctuation">(</span>filters<span class="token operator">=</span><span class="token number">6</span><span class="token punctuation">,</span> kernel_size<span class="token operator">=</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">,</span> input_shape<span class="token operator">=</span><span class="token punctuation">(</span><span class="token number">28</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>AveragePooling2D<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Conv2D<span class="token punctuation">(</span>filters<span class="token operator">=</span><span class="token number">16</span><span class="token punctuation">,</span> kernel_size<span class="token operator">=</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>AveragePooling2D<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">2</span><span class="token punctuation">,</span> <span class="token number">2</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Conv2D<span class="token punctuation">(</span>filters<span class="token operator">=</span><span class="token number">120</span><span class="token punctuation">,</span> kernel_size<span class="token operator">=</span><span class="token punctuation">(</span><span class="token number">3</span><span class="token punctuation">,</span> <span class="token number">3</span><span class="token punctuation">)</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Flatten<span class="token punctuation">(</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span><span class="token number">84</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'relu'</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    network<span class="token punctuation">.</span>add<span class="token punctuation">(</span>layers<span class="token punctuation">.</span>Dense<span class="token punctuation">(</span><span class="token number">10</span><span class="token punctuation">,</span> activation<span class="token operator">=</span><span class="token string">'softmax'</span><span class="token punctuation">)</span><span class="token punctuation">)</span>
+    <span class="token keyword">return</span> network
+
+network <span class="token operator">=</span> Lenet<span class="token punctuation">(</span><span class="token punctuation">)</span>
+
+<span class="token comment"># 训练神经网络</span>
+<span class="token comment"># 编译：确定优化器（学习率/梯度下降步长）和损失函数等</span>
+network<span class="token punctuation">.</span><span class="token builtin">compile</span><span class="token punctuation">(</span>optimizer<span class="token operator">=</span>RMSprop<span class="token punctuation">(</span>lr<span class="token operator">=</span><span class="token number">0.001</span><span class="token punctuation">)</span><span class="token punctuation">,</span> loss<span class="token operator">=</span><span class="token string">'categorical_crossentropy'</span><span class="token punctuation">,</span> metrics<span class="token operator">=</span><span class="token punctuation">[</span><span class="token string">'accuracy'</span><span class="token punctuation">]</span><span class="token punctuation">)</span>
+
+train_images <span class="token operator">=</span> train_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">60000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span> <span class="token operator">/</span> <span class="token number">255</span>
+test_images <span class="token operator">=</span> test_images<span class="token punctuation">.</span>reshape<span class="token punctuation">(</span><span class="token punctuation">(</span><span class="token number">10000</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token punctuation">,</span> <span class="token number">28</span><span class="token punctuation">,</span> <span class="token number">1</span><span class="token punctuation">)</span><span class="token punctuation">)</span><span class="token punctuation">.</span>astype<span class="token punctuation">(</span><span class="token string">'float'</span><span class="token punctuation">)</span> <span class="token operator">/</span> <span class="token number">255</span>
+train_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>train_labels<span class="token punctuation">)</span>
+test_labels <span class="token operator">=</span> to_categorical<span class="token punctuation">(</span>test_labels<span class="token punctuation">)</span>
+
+<span class="token comment"># epochs表示训练多少个回合，batch_size表示每次训练给多大的数据</span>
+network<span class="token punctuation">.</span>fit<span class="token punctuation">(</span>train_images<span class="token punctuation">,</span> train_labels<span class="token punctuation">,</span> epochs<span class="token operator">=</span><span class="token number">10</span><span class="token punctuation">,</span> batch_size<span class="token operator">=</span><span class="token number">128</span><span class="token punctuation">,</span> verbose<span class="token operator">=</span><span class="token number">2</span><span class="token punctuation">)</span>
+<span class="token comment"># 经过20轮训练，训练集准确率达到80%</span>
+<span class="token comment"># print(network.summary())</span>
+
+<span class="token comment"># 用模型进行预测</span>
+<span class="token comment"># y_pre = network.predict(test_images[:5])</span>
+<span class="token comment"># print(y_pre, test_labels[:5])</span>
+test_loss<span class="token punctuation">,</span> test_accuracy <span class="token operator">=</span> network<span class="token punctuation">.</span>evaluate<span class="token punctuation">(</span>test_images<span class="token punctuation">,</span> test_labels<span class="token punctuation">)</span>
+<span class="token keyword">print</span><span class="token punctuation">(</span><span class="token string">"test_loss: "</span><span class="token punctuation">,</span> test_loss<span class="token punctuation">,</span> <span class="token string">"          test_accuracy: "</span><span class="token punctuation">,</span> test_accuracy<span class="token punctuation">)</span>
+</code></pre>
+<p>在这个简单的卷积神经网络模型上面，训练回合减少到了一半，而运行时间延长了不少，不过最终的测试结果准确率可以达到约99%：</p>
+<p><img src="https://img-blog.csdnimg.cn/ecd2b13dd2fe4054bec7e5bbb212ea0f.png?x-oss-process=image/watermark,type_ZHJvaWRzYW5zZmFsbGJhY2s,shadow_50,text_Q1NETiBA5L2g6L-Z5Liq5Luj56CB5oiR55yL5LiN5oeC,size_20,color_FFFFFF,t_70,g_se,x_16" alt="请添加图片描述"></p>
+</div>
+</body>
+
+</html>
